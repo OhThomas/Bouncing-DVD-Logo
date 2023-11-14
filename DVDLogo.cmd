@@ -1,0 +1,1 @@
+START pythonw DVDLogo.py -transparent -animated

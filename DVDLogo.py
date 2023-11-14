@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import sys
 from tkinter import *
 import argparse
 
@@ -55,6 +56,7 @@ parser.add_argument("-update", "-tick", type=int, help="how fast the program upd
 parser.add_argument("-animated", "-gif", action='store_true', help="use if the file is a gif (gif exclusively used for animation)")
 parser.add_argument("-animationSpeed", type=int, help="how fast the animation plays (how many ms in between frames)", default=15)
 parser.add_argument("-static", "-staticCollision", action='store_false', help="stops dynamic dimensions for collision detection with animated images")
+parser.add_argument("-priority", type=int, help="determines priority compared to other processes, for Windows see https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setpriorityclass ; for Unix see https://en.wikipedia.org/wiki/Nice_(Unix)",default=1)
 parser.add_argument("-windowed", action='store_false', help="window toggle")
 args = parser.parse_args()
 
@@ -69,6 +71,7 @@ animated = args.animated                        # use with gif
 animationSpeed = args.animationSpeed            # how fast gif plays
 dynamicCollision = args.static                  # finds transparent pixels on every side of every frame for dynamic collision
 fullscreen = args.windowed                      # fullscreen toggle
+priority = args.priority                        # determines priority compared to other processes
 geometryDisplay = str(width)+"x"+str(height)    # tkinter display setting accomodating variables
 x = 0                                           # location of image
 y = 0                                           # location of image
@@ -168,6 +171,25 @@ x = imgWidth-dvdImage.bounds[0].leftPad
 y = imgHeight-dvdImage.bounds[0].upPad
 img = canvas.create_image(x, y, image=dvdImage.frames[0])
 
+# Setting thread priority
+# Windows: priority: win32process priority class values as decimal integers: 
+# https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setpriorityclass
+# Unix: priority: nice values as integers:                           
+# https://en.wikipedia.org/wiki/Nice_(Unix)
+def setPriority(priority):
+    try:
+        sys.getwindowsversion()
+    except AttributeError:
+        import os
+        os.nice(priority)
+    else:
+        import win32api,win32process,win32con
+        if priority == 1:
+            priority = 256
+        pid = win32api.GetCurrentProcessId()
+        handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
+        win32process.SetPriorityClass(handle, priority)
+
 # Updating gif frame
 def animation(frameTotal):
     global frameCount
@@ -205,6 +227,7 @@ def tick(x,y,velX,velY):
     win.after(update,tick,x,y,velX,velY)
 
 # Main loop
+setPriority(priority)
 win.after(0,tick,x,y,velX,velY)
 
 # Animation
